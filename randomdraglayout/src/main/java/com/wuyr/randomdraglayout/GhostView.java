@@ -12,6 +12,11 @@ import android.view.View;
 
 import java.util.Random;
 
+import static com.wuyr.randomdraglayout.RandomDragLayout.ORIENTATION_BOTTOM;
+import static com.wuyr.randomdraglayout.RandomDragLayout.ORIENTATION_LEFT;
+import static com.wuyr.randomdraglayout.RandomDragLayout.ORIENTATION_RIGHT;
+import static com.wuyr.randomdraglayout.RandomDragLayout.ORIENTATION_TOP;
+
 /**
  * @author wuyr
  * @github https://github.com/wuyr/RandomDragLayout
@@ -20,8 +25,7 @@ import java.util.Random;
 @SuppressLint("ViewConstructor")
 class GhostView extends View {
 
-    public static final int ORIENTATION_LEFT = 0, ORIENTATION_RIGHT = 1, ORIENTATION_TOP = 2, ORIENTATION_BOTTOM = 3;
-    private int mTargetOrientation;
+    private int mTargetOrientation = -1;
     private Bitmap mBitmap;
     private float mDownX, mDownY, mDownRawX;
     private float mBitmapCenterX, mBitmapCenterY;
@@ -134,6 +138,14 @@ class GhostView extends View {
      */
     void setFlinging() {
         isFlinging = true;
+    }
+
+    /**
+     * 获取当前位移动画前进的方向
+     * @return {@see RandomDragLayout.ORIENTATION} or 无状态: -1
+     */
+    int getTargetOrientation(){
+        return mTargetOrientation;
     }
 
     /**

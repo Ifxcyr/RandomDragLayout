@@ -1,7 +1,10 @@
 package com.wuyr.randomdraglayout;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
 import android.animation.TypeEvaluator;
 import android.animation.ValueAnimator;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.content.ContextWrapper;
@@ -23,6 +26,48 @@ import android.widget.Scroller;
  */
 public class RandomDragLayout extends ViewGroup {
 
+    /**
+     * 手指松开后（无滑动速率）, View向屏幕左边移动
+     */
+    public static final int ORIENTATION_LEFT = 0;
+    /**
+     * 同上，此为向右
+     */
+    public static final int ORIENTATION_RIGHT = 1;
+    /**
+     * 同上，此为向上
+     */
+    public static final int ORIENTATION_TOP = 2;
+    /**
+     * 同上，此为向下
+     */
+    public static final int ORIENTATION_BOTTOM = 3;
+    /**
+     * 普通状态
+     */
+    public static final int STATE_NORMAL = 0;
+    /**
+     * 正在拖拽中
+     */
+    public static final int STATE_DRAGGING = 1;
+    /**
+     * 惯性移动中（有滑动速率）
+     */
+    public static final int STATE_FLINGING = 2;
+    /**
+     * 手指松开后，向屏幕边缘移动中（无滑动速率）
+     */
+    public static final int STATE_FLEEING = 3;
+    /**
+     * 该View已经移动到屏幕外面
+     */
+    public static final int STATE_OUT_OF_SCREEN = 4;
+    /**
+     * 该View在屏幕内播放透明渐变动画完毕（消失掉）
+     */
+    public static final int STATE_GONE = 5;
+
+    private int mState;//当前状态
     private ViewGroup mRootView;//DecorView
     private View mChild;//唯一的子View
     private int mTouchSlop;//触发滑动的最小距离
@@ -32,6 +77,7 @@ public class RandomDragLayout extends ViewGroup {
     private float mScrollAvailabilityRatio;
     private float mLastX, mLastY;
     private long mFlingDuration;
+    private long mAlphaDuration;
     private Scroller mScroller;
     private VelocityTracker mVelocityTracker;
     private GhostView mGhostView;
@@ -39,6 +85,7 @@ public class RandomDragLayout extends ViewGroup {
     private Canvas mCanvas;
     private ValueAnimator mAnimator;
     private TypeEvaluator<PointF> mEvaluator;
+    private OnStateChangeListener mOnStateChangeListener;
 
     public RandomDragLayout(Context context) {
         this(context, null);
@@ -59,8 +106,9 @@ public class RandomDragLayout extends ViewGroup {
         mTouchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
         mScroller = new Scroller(context);
         mVelocityTracker = VelocityTracker.obtain();
-        mScrollAvailabilityRatio = .5F;
+        mScrollAvailabilityRatio = .8F;
         mFlingDuration = 800L;
+        mAlphaDuration = 200L;
         initEvaluator();
     }
 
@@ -81,11 +129,14 @@ public class RandomDragLayout extends ViewGroup {
         isGhostViewShown = false;
         isGhostViewLostControl = false;
         mAnimator = null;
+        updateState(STATE_NORMAL);
         return true;
     }
 
     /**
      * 设置惯性移动的利用率
+     *
+     * @param ratio 范围: 0~1
      */
     public void setScrollAvailabilityRatio(float ratio) {
         mScrollAvailabilityRatio = ratio;
@@ -94,8 +145,40 @@ public class RandomDragLayout extends ViewGroup {
     /**
      * 设置位移动画时长
      */
-    public void setFlingDuration(long duration){
+    public void setFlingDuration(long duration) {
         mFlingDuration = duration;
+    }
+
+    /**
+     * 设置透明渐变动画时长
+     */
+    public void setAlphaAnimationDuration(long duration) {
+        mAlphaDuration = duration;
+    }
+
+    /**
+     * 设置状态变化监听器
+     */
+    public void setOnStateChangeListener(OnStateChangeListener listener) {
+        mOnStateChangeListener = listener;
+    }
+
+    /**
+     * 获取当前位移动画前进的方向，包括：上，下，左，右
+     *
+     * @return {@link #ORIENTATION_LEFT} or 无状态: -1
+     */
+    public int getTargetOrientation() {
+        return mGhostView == null ? -1 : mGhostView.getTargetOrientation();
+    }
+
+    /**
+     * 获取当前状态，包框：普通，拖拽中，惯性移动中，非惯性移动中，超出屏幕
+     *
+     * @return {@link #STATE_NORMAL}
+     */
+    public int getState() {
+        return mState;
     }
 
     @Override
@@ -107,6 +190,7 @@ public class RandomDragLayout extends ViewGroup {
         }
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         float x = event.getX(), y = event.getY();
@@ -137,6 +221,7 @@ public class RandomDragLayout extends ViewGroup {
             //手指未松开才更新
             if (!isGhostViewLostControl && mGhostView != null) {
                 mGhostView.updateOffset(x - mLastX, y - mLastY);
+                updateState(STATE_DRAGGING);
             }
         } else {
             draw(mCanvas);
@@ -156,7 +241,7 @@ public class RandomDragLayout extends ViewGroup {
         if (!isGhostViewLostControl && mGhostView != null) {
             isBeingDragged = false;
             isGhostViewLostControl = true;
-            mVelocityTracker.computeCurrentVelocity(1000);
+            mVelocityTracker.computeCurrentVelocity(500);
             float xVelocity = mVelocityTracker.getXVelocity();
             float yVelocity = mVelocityTracker.getYVelocity();
             if (isOneBiggerThan(xVelocity, yVelocity, 1000)) {
@@ -183,6 +268,7 @@ public class RandomDragLayout extends ViewGroup {
             }
         });
         mAnimator.start();
+        updateState(STATE_FLEEING);
     }
 
     /**
@@ -198,6 +284,7 @@ public class RandomDragLayout extends ViewGroup {
                 isGhostViewLostControl = true;
                 abortAnimation();
                 invalidate();
+                updateState(STATE_OUT_OF_SCREEN);
             }
         });
     }
@@ -213,10 +300,7 @@ public class RandomDragLayout extends ViewGroup {
     }
 
     /**
-     * @param value1
-     * @param value2
-     * @param target
-     * @return
+     * 判断前两个参数是否至少一个大于第三个参数
      */
     private boolean isOneBiggerThan(float value1, float value2, int target) {
         return Math.abs(value1) > target || Math.abs(value2) > target;
@@ -230,6 +314,7 @@ public class RandomDragLayout extends ViewGroup {
         mScroller.fling(0, 0, (int) xVelocity, (int) yVelocity,
                 Integer.MIN_VALUE, Integer.MAX_VALUE, Integer.MIN_VALUE, Integer.MAX_VALUE);
         invalidate();
+        updateState(STATE_FLINGING);
     }
 
     @Override
@@ -324,13 +409,18 @@ public class RandomDragLayout extends ViewGroup {
         } else if (mScroller.isFinished()) {
             if (isGhostViewLostControl && mRootView != null) {
                 isGhostViewLostControl = false;
+                //防止报：Attempt to read from field 'int android.view.View.mViewFlags' on a null object reference
                 post(new Runnable() {
                     @Override
                     public void run() {
                         if (mGhostView != null) {
-                            // TODO: 19-1-17 播放透明动画后移除view
-                            mRootView.removeView(mGhostView);
-                            mGhostView = null;
+                            //如果是超出了屏幕，则不播放渐变动画，直接移除
+                            if (mState == STATE_OUT_OF_SCREEN) {
+                                mRootView.removeView(mGhostView);
+                                mGhostView = null;
+                            } else {
+                                startAlphaAnimation();
+                            }
                         }
                     }
                 });
@@ -338,6 +428,36 @@ public class RandomDragLayout extends ViewGroup {
             //惯性移动完毕，重置偏移量
             mLastScrollOffsetX = 0;
             mLastScrollOffsetY = 0;
+        }
+    }
+
+    /***
+     * 播放透明渐变动画，然后移除GhostView
+     */
+    private void startAlphaAnimation() {
+        if (mGhostView != null) {
+            mGhostView.animate().alpha(0).setDuration(mAlphaDuration).setListener(new AnimatorListenerAdapter() {
+                @Override
+                public void onAnimationEnd(Animator animation) {
+                    mRootView.removeView(mGhostView);
+                    mGhostView = null;
+                    updateState(STATE_GONE);
+                }
+            }).start();
+        }
+    }
+
+    /**
+     * 更新状态并回调监听器
+     *
+     * @param newState 新的状态
+     */
+    private void updateState(int newState) {
+        if (mState != newState) {
+            mState = newState;
+            if (mOnStateChangeListener != null) {
+                mOnStateChangeListener.onStateChanged(newState);
+            }
         }
     }
 
@@ -356,6 +476,9 @@ public class RandomDragLayout extends ViewGroup {
         return new MarginLayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
     }
 
+    /**
+     * 自定义Evaluator，使ValueAnimator支持PointF
+     */
     private void initEvaluator() {
         mEvaluator = new TypeEvaluator<PointF>() {
 
@@ -371,6 +494,7 @@ public class RandomDragLayout extends ViewGroup {
                 return temp;
             }
         };
+
     }
 
     /**
@@ -387,5 +511,14 @@ public class RandomDragLayout extends ViewGroup {
             context = ((ContextWrapper) context).getBaseContext();
         }
         throw new RuntimeException("Activity not found!");
+    }
+
+    public interface OnStateChangeListener {
+        /**
+         * 状态更新回调
+         *
+         * @param newState 新的状态
+         */
+        void onStateChanged(int newState);
     }
 }
