@@ -75,6 +75,7 @@ public class RandomDragLayout extends ViewGroup {
     private boolean isBeingDragged;//是否已经开始了拖动
     private boolean isGhostViewShown;//GhostView是否已经添加
     private boolean isGhostViewLostControl;//GhostView是否脱离手指
+    private boolean isAlphaAnimationRunning;//透明渐变动画是否正在播放
     private float mScrollAvailabilityRatio;
     private float mLastX, mLastY;
     private long mFlingDuration;
@@ -119,7 +120,8 @@ public class RandomDragLayout extends ViewGroup {
      * @return 重置成功返回 true，反之
      */
     public boolean reset() {
-        if (isBeingDragged || mAnimator != null && mAnimator.isRunning() || !mScroller.isFinished()) {
+        if (isBeingDragged || mAnimator != null && mAnimator.isRunning()
+                || isAlphaAnimationRunning || !mScroller.isFinished()) {
             return false;
         }
         if (mGhostView != null) {
@@ -174,7 +176,7 @@ public class RandomDragLayout extends ViewGroup {
     }
 
     /**
-     * 获取当前状态，包框：普通，拖拽中，惯性移动中，非惯性移动中，超出屏幕
+     * 获取当前状态，包框：普通，拖拽中，惯性移动中，非惯性移动中，超出屏幕，消失
      *
      * @return {@link #STATE_NORMAL}
      */
@@ -220,7 +222,7 @@ public class RandomDragLayout extends ViewGroup {
     private void handleActionMove(MotionEvent event, float x, float y) {
         if (isGhostViewShown) {
             //手指未松开才更新
-            if (!isGhostViewLostControl && mGhostView != null) {
+            if (!isGhostViewLostControl && !isAlphaAnimationRunning && mGhostView != null) {
                 mGhostView.updateOffset(x - mLastX, y - mLastY);
                 updateState(STATE_DRAGGING);
             }
@@ -238,8 +240,8 @@ public class RandomDragLayout extends ViewGroup {
      * 处理 ACTION_UP 事件
      */
     private void handleActionUp() {
-        //如果位移动画正在播放或者
-        if (!isGhostViewLostControl && mGhostView != null) {
+        //如果位移或透明渐变动画正在播放则不处理
+        if (!isGhostViewLostControl && !isAlphaAnimationRunning && mGhostView != null) {
             isBeingDragged = false;
             isGhostViewLostControl = true;
             mVelocityTracker.computeCurrentVelocity(500);
@@ -390,7 +392,7 @@ public class RandomDragLayout extends ViewGroup {
     @Override
     public void addView(View child, int index, LayoutParams params) {
         if (getChildCount() > 0) {
-            throw new IllegalStateException("DragRotateLayout can only contain 1 child!");
+            throw new IllegalStateException("RandomDragLayout can only contain 1 child!");
         }
         super.addView(child, index, params);
         mChild = child;
@@ -409,7 +411,6 @@ public class RandomDragLayout extends ViewGroup {
             invalidate();
         } else if (mScroller.isFinished()) {
             if (isGhostViewLostControl && mRootView != null) {
-                isGhostViewLostControl = false;
                 //防止报：Attempt to read from field 'int android.view.View.mViewFlags' on a null object reference
                 post(new Runnable() {
                     @Override
@@ -419,9 +420,11 @@ public class RandomDragLayout extends ViewGroup {
                             if (mState == STATE_OUT_OF_SCREEN) {
                                 mRootView.removeView(mGhostView);
                                 mGhostView = null;
+                                isAlphaAnimationRunning = false;
                             } else {
                                 startAlphaAnimation();
                             }
+                            isGhostViewLostControl = false;
                         }
                     }
                 });
@@ -437,11 +440,13 @@ public class RandomDragLayout extends ViewGroup {
      */
     private void startAlphaAnimation() {
         if (mGhostView != null) {
+            isAlphaAnimationRunning = true;
             mGhostView.animate().alpha(0).setDuration(mAlphaDuration).setListener(new AnimatorListenerAdapter() {
                 @Override
                 public void onAnimationEnd(Animator animation) {
                     mRootView.removeView(mGhostView);
                     mGhostView = null;
+                    isAlphaAnimationRunning = false;
                     updateState(STATE_GONE);
                 }
             }).start();
