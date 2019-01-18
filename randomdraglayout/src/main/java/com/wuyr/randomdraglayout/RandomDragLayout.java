@@ -24,6 +24,7 @@ import android.widget.Scroller;
  * @github https://github.com/wuyr/RandomDragLayout
  * @since 2019-01-17 上午11:40
  */
+@SuppressWarnings("unused")
 public class RandomDragLayout extends ViewGroup {
 
     /**
