@@ -19,9 +19,10 @@ implementation 'com.wuyr:randomdraglayout:1.0.0'
 |int getState()|获取当前状态 **状态: 见上**|
 |int getTargetOrientation()|获取当前位移动画前进的方向 **方向:**<br/>ORIENTATION_LEFT (向左移动)<br/>ORIENTATION_RIGHT (向右移动)<br/>ORIENTATION_TOP (向上移动)<br/>ORIENTATION_BOTTOM (向下移动)|
 |RectF getBounds()|获取映射后的Bitmap边界 (即：包括了旋转之后的宽高)|
-<br/>
+
 ## 使用示例:
 **在目标View外面直接套一层RandomDragLayout:**
+
 ```
 <com.wuyr.randomdraglayout.RandomDragLayout
     android:layout_width="wrap_content"
@@ -35,8 +36,11 @@ implementation 'com.wuyr:randomdraglayout:1.0.0'
         android:text="RandomDragLayoutTest" />
 </com.wuyr.randomdraglayout.RandomDragLayout>
 ```
+
 **宽高可直接使用wrap_content，RandomDragLayout会根据里面的View调整自身大小。**<br/>**OK，现在已经可以正常运行了，还可以在代码里面去设置一些属性或者监听各种状态。**
+
 <br/>
+
 ## Demo下载: 敬请期待。。。
 ## Demo源码地址: 敬请期待。。。
 ## 效果图:
