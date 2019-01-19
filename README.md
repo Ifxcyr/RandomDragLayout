@@ -21,6 +21,6 @@ implementation 'com.wuyr:randomdraglayout:1.0.0'
 |int getState()|获取当前状态 **状态: 见上**|
 
 ## Demo下载: 敬请期待。。。
-### Demo源码地址: 敬请期待。。。
+## Demo源码地址: 敬请期待。。。
 ## 效果图:
 ### 敬请期待。。。
