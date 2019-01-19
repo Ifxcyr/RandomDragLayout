@@ -11,6 +11,7 @@ import android.content.ContextWrapper;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.PointF;
+import android.graphics.RectF;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.VelocityTracker;
@@ -88,6 +89,7 @@ public class RandomDragLayout extends ViewGroup {
     private ValueAnimator mAnimator;
     private TypeEvaluator<PointF> mEvaluator;
     private OnStateChangeListener mOnStateChangeListener;
+    private OnDragListener mOnDragListener;
 
     public RandomDragLayout(Context context) {
         this(context, null);
@@ -160,10 +162,20 @@ public class RandomDragLayout extends ViewGroup {
     }
 
     /**
-     * 设置状态变化监听器
+     * 监听状态变化
      */
     public void setOnStateChangeListener(OnStateChangeListener listener) {
         mOnStateChangeListener = listener;
+    }
+
+    /**
+     * 监听拖动
+     */
+    public void setOnDragListener(OnDragListener onDragListener) {
+        mOnDragListener = onDragListener;
+        if (mGhostView != null) {
+            mGhostView.setOnDragListener(onDragListener);
+        }
     }
 
     /**
@@ -182,6 +194,13 @@ public class RandomDragLayout extends ViewGroup {
      */
     public int getState() {
         return mState;
+    }
+
+    /**
+     * 获取map后的bitmap边界 (即：包括了旋转变化后的宽高)
+     */
+    public RectF getBounds() {
+        return mGhostView.getBounds();
     }
 
     @Override
@@ -290,6 +309,9 @@ public class RandomDragLayout extends ViewGroup {
                 updateState(STATE_OUT_OF_SCREEN);
             }
         });
+        if (mOnDragListener != null) {
+            mGhostView.setOnDragListener(mOnDragListener);
+        }
     }
 
     /**
@@ -526,5 +548,15 @@ public class RandomDragLayout extends ViewGroup {
          * @param newState 新的状态
          */
         void onStateChanged(int newState);
+    }
+
+    public interface OnDragListener {
+        /**
+         * 拖动更新时回调
+         * @param x 触摸点在X轴上的绝对坐标
+         * @param y 触摸点在Y轴上的绝对坐标
+         * @param degrees GhostView的绝对旋转角度 (0~360)
+         */
+        void onUpdate(float x, float y, float degrees);
     }
 }

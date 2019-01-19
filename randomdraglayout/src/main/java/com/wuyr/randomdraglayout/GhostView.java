@@ -38,6 +38,7 @@ class GhostView extends View {
     private Matrix mMatrix;
     private RectF mBitmapRect;
     private OnOutOfScreenListener mOnOutOfScreenListener;
+    private RandomDragLayout.OnDragListener mOnDragListener;
 
     GhostView(Context context, OnOutOfScreenListener listener) {
         super(context);
@@ -94,6 +95,7 @@ class GhostView extends View {
 
         mBitmap = bitmap;
         invalidate();
+        notifyDragListener();
     }
 
     /**
@@ -112,6 +114,7 @@ class GhostView extends View {
         }
         mCurrentAngle = computeClockwiseAngle(mBitmapCenterX, mBitmapCenterY, mDownRawX, mCurrentRawY) - mStartAngle;
         invalidate();
+        notifyDragListener();
     }
 
     /**
@@ -130,6 +133,7 @@ class GhostView extends View {
             mCurrentRawY = location.y;
 
             invalidate();
+            notifyDragListener();
         }
     }
 
@@ -141,11 +145,26 @@ class GhostView extends View {
     }
 
     /**
+     * 设置拖动监听
+     */
+    void setOnDragListener(RandomDragLayout.OnDragListener onDragListener) {
+        mOnDragListener = onDragListener;
+    }
+
+    /**
      * 获取当前位移动画前进的方向
+     *
      * @return {@see RandomDragLayout.ORIENTATION} or 无状态: -1
      */
-    int getTargetOrientation(){
+    int getTargetOrientation() {
         return mTargetOrientation;
+    }
+
+    /**
+     * 获取map后的bitmap边界 (即：包括了旋转变化后的宽高)
+     */
+    RectF getBounds() {
+        return mBitmapRect;
     }
 
     /**
@@ -197,6 +216,29 @@ class GhostView extends View {
             mTargetOrientation = ORIENTATION_BOTTOM;
         }
         return new PointF(toX, toY);
+    }
+
+    private void notifyDragListener() {
+        if (mOnDragListener != null) {
+            mOnDragListener.onUpdate(mCurrentRawX, mCurrentRawY, fixAngle(mCurrentAngle));
+        }
+    }
+
+    /**
+     * 调整角度，使其在0 ~ 360之间
+     *
+     * @param angle 当前角度
+     * @return 调整后的角度
+     */
+    private float fixAngle(float angle) {
+        float maxAngle = 360F;
+        while (angle < 0) {
+            angle += maxAngle;
+        }
+        while (angle > maxAngle) {
+            angle %= maxAngle;
+        }
+        return angle;
     }
 
     /**
