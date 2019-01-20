@@ -105,8 +105,11 @@ public class RandomDragLayout extends ViewGroup {
     }
 
     private void init(Context context) {
-        //获取activity的根视图,用来添加GhostView
-        mRootView = (ViewGroup) getActivity().getWindow().getDecorView();
+        //非AndroidStudio预览
+        if (!isInEditMode()) {
+            //获取activity的根视图,用来添加GhostView
+            mRootView = (ViewGroup) getActivity().getWindow().getDecorView();
+        }
         mTouchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
         mScroller = new Scroller(context);
         mVelocityTracker = VelocityTracker.obtain();
@@ -246,7 +249,7 @@ public class RandomDragLayout extends ViewGroup {
                 updateState(STATE_DRAGGING);
             }
         } else {
-            draw(mCanvas);
+            mChild.draw(mCanvas);
             mChild.setVisibility(INVISIBLE);
             initializeGhostView();
             mRootView.addView(mGhostView, LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT);
@@ -553,8 +556,9 @@ public class RandomDragLayout extends ViewGroup {
     public interface OnDragListener {
         /**
          * 拖动更新时回调
-         * @param x 触摸点在X轴上的绝对坐标
-         * @param y 触摸点在Y轴上的绝对坐标
+         *
+         * @param x       触摸点在X轴上的绝对坐标
+         * @param y       触摸点在Y轴上的绝对坐标
          * @param degrees GhostView的绝对旋转角度 (0~360)
          */
         void onUpdate(float x, float y, float degrees);
