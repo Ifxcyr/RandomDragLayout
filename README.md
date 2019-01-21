@@ -4,13 +4,14 @@
 ### 使用方式:
 #### 添加依赖：
 ```
-implementation 'com.wuyr:randomdraglayout:1.0.0'
+implementation 'com.wuyr:randomdraglayout:1.1.0'
 ```
 
 ### APIs:
 |Method|Description|
 |------|-----------|
 |boolean reset()|重置状态 (重新初始化)|
+|setChildRefreshPeriod(long period)|设置子View的重绘间隔时长 **默认：0 (不重绘)**<br/>一般是内容会不断更新的View才需要设置此参数，<br/>静态的View无需设置|
 |setAlphaAnimationDuration(long duration)|设置透明渐变动画时长 **默认: 200L**|
 |setFlingDuration(long duration)|设置位移动画时长 **默认: 800L**|
 |setScrollAvailabilityRatio(float ratio)|设置惯性移动的利用率 **范围: 0~1 默认: 0.8F**|

@@ -10,11 +10,7 @@ import android.content.Context;
 import android.content.ContextWrapper;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.PointF;
-import android.graphics.PorterDuff;
-import android.graphics.RectF;
-import android.os.Handler;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.VelocityTracker;
@@ -79,7 +75,6 @@ public class RandomDragLayout extends ViewGroup {
     private boolean isBeingDragged;//是否已经开始了拖动
     private boolean isGhostViewShown;//GhostView是否已经添加
     private boolean isGhostViewLostControl;//GhostView是否脱离手指
-    private boolean isAlphaAnimationRunning;//透明渐变动画是否正在播放
     private float mScrollAvailabilityRatio;
     private float mLastX, mLastY;
     private long mFlingDuration;
@@ -92,10 +87,6 @@ public class RandomDragLayout extends ViewGroup {
     private ValueAnimator mAnimator;
     private TypeEvaluator<PointF> mEvaluator;
     private OnStateChangeListener mOnStateChangeListener;
-    private OnDragListener mOnDragListener;
-    private Handler mHandler;
-    private Runnable mChildRefreshTask;//子View重绘任务
-    private long mChildRefreshPeriod;//间隔时长
 
     public RandomDragLayout(Context context) {
         this(context, null);
@@ -111,12 +102,8 @@ public class RandomDragLayout extends ViewGroup {
     }
 
     private void init(Context context) {
-        mHandler = new Handler();
-        //非AndroidStudio预览
-        if (!isInEditMode()) {
-            //获取activity的根视图,用来添加GhostView
-            mRootView = (ViewGroup) getActivity().getWindow().getDecorView();
-        }
+        //获取activity的根视图,用来添加GhostView
+        mRootView = (ViewGroup) getActivity().getWindow().getDecorView();
         mTouchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
         mScroller = new Scroller(context);
         mVelocityTracker = VelocityTracker.obtain();
@@ -132,8 +119,7 @@ public class RandomDragLayout extends ViewGroup {
      * @return 重置成功返回 true，反之
      */
     public boolean reset() {
-        if (isBeingDragged || mAnimator != null && mAnimator.isRunning()
-                || isAlphaAnimationRunning || !mScroller.isFinished()) {
+        if (isBeingDragged || mAnimator != null && mAnimator.isRunning() || !mScroller.isFinished()) {
             return false;
         }
         if (mGhostView != null) {
@@ -144,7 +130,6 @@ public class RandomDragLayout extends ViewGroup {
         isGhostViewShown = false;
         isGhostViewLostControl = false;
         mAnimator = null;
-        removeRefreshTask();
         updateState(STATE_NORMAL);
         return true;
     }
@@ -173,44 +158,10 @@ public class RandomDragLayout extends ViewGroup {
     }
 
     /**
-     * 监听状态变化
+     * 设置状态变化监听器
      */
     public void setOnStateChangeListener(OnStateChangeListener listener) {
         mOnStateChangeListener = listener;
-    }
-
-    /**
-     * 监听拖动
-     */
-    public void setOnDragListener(OnDragListener onDragListener) {
-        mOnDragListener = onDragListener;
-        if (mGhostView != null) {
-            mGhostView.setOnDragListener(onDragListener);
-        }
-    }
-
-    /**
-     * 设置子View的重绘周期 默认：0 (不重绘)
-     * 一般是内容会不断更新的View才需要设置此参数，静态的View无需设置
-     *
-     * @param period 间隔时长 建议: 不低于16
-     */
-    public void setChildRefreshPeriod(long period) {
-        removeRefreshTask();
-        if (period > 0) {
-            mChildRefreshPeriod = period;
-            mChildRefreshTask = new Runnable() {
-                @Override
-                public void run() {
-                    if (mGhostView != null) {
-                        mCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
-                        mChild.draw(mCanvas);
-                        mChild.invalidate();
-                        postRefreshTask();
-                    }
-                }
-            };
-        }
     }
 
     /**
@@ -223,19 +174,12 @@ public class RandomDragLayout extends ViewGroup {
     }
 
     /**
-     * 获取当前状态，包框：普通，拖拽中，惯性移动中，非惯性移动中，超出屏幕，消失
+     * 获取当前状态，包框：普通，拖拽中，惯性移动中，非惯性移动中，超出屏幕
      *
      * @return {@link #STATE_NORMAL}
      */
     public int getState() {
         return mState;
-    }
-
-    /**
-     * 获取map后的bitmap边界 (即：包括了旋转变化后的宽高)
-     */
-    public RectF getBounds() {
-        return mGhostView.getBounds();
     }
 
     @Override
@@ -276,18 +220,17 @@ public class RandomDragLayout extends ViewGroup {
     private void handleActionMove(MotionEvent event, float x, float y) {
         if (isGhostViewShown) {
             //手指未松开才更新
-            if (!isGhostViewLostControl && !isAlphaAnimationRunning && mGhostView != null) {
+            if (!isGhostViewLostControl && mGhostView != null) {
                 mGhostView.updateOffset(x - mLastX, y - mLastY);
                 updateState(STATE_DRAGGING);
             }
         } else {
-            mChild.draw(mCanvas);
+            draw(mCanvas);
             mChild.setVisibility(INVISIBLE);
             initializeGhostView();
             mRootView.addView(mGhostView, LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT);
             mGhostView.onDown(event, mBitmap);
             isGhostViewShown = true;
-            postRefreshTask();
         }
     }
 
@@ -295,8 +238,8 @@ public class RandomDragLayout extends ViewGroup {
      * 处理 ACTION_UP 事件
      */
     private void handleActionUp() {
-        //如果位移或透明渐变动画正在播放则不处理
-        if (!isGhostViewLostControl && !isAlphaAnimationRunning && mGhostView != null) {
+        //如果位移动画正在播放或者
+        if (!isGhostViewLostControl && mGhostView != null) {
             isBeingDragged = false;
             isGhostViewLostControl = true;
             mVelocityTracker.computeCurrentVelocity(500);
@@ -345,9 +288,6 @@ public class RandomDragLayout extends ViewGroup {
                 updateState(STATE_OUT_OF_SCREEN);
             }
         });
-        if (mOnDragListener != null) {
-            mGhostView.setOnDragListener(mOnDragListener);
-        }
     }
 
     /**
@@ -445,12 +385,12 @@ public class RandomDragLayout extends ViewGroup {
     }
 
     /**
-     * 重写父类addView方法，仅允许拥有一个直接子View
+     * 重写父类addView方法，仅允许一个子View
      */
     @Override
     public void addView(View child, int index, LayoutParams params) {
         if (getChildCount() > 0) {
-            throw new IllegalStateException("RandomDragLayout can only contain 1 child!");
+            throw new IllegalStateException("DragRotateLayout can only contain 1 child!");
         }
         super.addView(child, index, params);
         mChild = child;
@@ -469,6 +409,7 @@ public class RandomDragLayout extends ViewGroup {
             invalidate();
         } else if (mScroller.isFinished()) {
             if (isGhostViewLostControl && mRootView != null) {
+                isGhostViewLostControl = false;
                 //防止报：Attempt to read from field 'int android.view.View.mViewFlags' on a null object reference
                 post(new Runnable() {
                     @Override
@@ -478,12 +419,9 @@ public class RandomDragLayout extends ViewGroup {
                             if (mState == STATE_OUT_OF_SCREEN) {
                                 mRootView.removeView(mGhostView);
                                 mGhostView = null;
-                                isAlphaAnimationRunning = false;
-                                removeRefreshTask();
                             } else {
                                 startAlphaAnimation();
                             }
-                            isGhostViewLostControl = false;
                         }
                     }
                 });
@@ -499,15 +437,12 @@ public class RandomDragLayout extends ViewGroup {
      */
     private void startAlphaAnimation() {
         if (mGhostView != null) {
-            isAlphaAnimationRunning = true;
             mGhostView.animate().alpha(0).setDuration(mAlphaDuration).setListener(new AnimatorListenerAdapter() {
                 @Override
                 public void onAnimationEnd(Animator animation) {
                     mRootView.removeView(mGhostView);
                     mGhostView = null;
-                    isAlphaAnimationRunning = false;
                     updateState(STATE_GONE);
-                    removeRefreshTask();
                 }
             }).start();
         }
@@ -540,18 +475,6 @@ public class RandomDragLayout extends ViewGroup {
     @Override
     protected MarginLayoutParams generateDefaultLayoutParams() {
         return new MarginLayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
-    }
-
-    private void removeRefreshTask() {
-        if (mChildRefreshTask != null) {
-            mHandler.removeCallbacks(mChildRefreshTask);
-        }
-    }
-
-    private void postRefreshTask() {
-        if (mChildRefreshTask != null) {
-            mHandler.postDelayed(mChildRefreshTask, mChildRefreshPeriod);
-        }
     }
 
     /**
@@ -598,16 +521,5 @@ public class RandomDragLayout extends ViewGroup {
          * @param newState 新的状态
          */
         void onStateChanged(int newState);
-    }
-
-    public interface OnDragListener {
-        /**
-         * 拖动更新时回调
-         *
-         * @param x       触摸点在X轴上的绝对坐标
-         * @param y       触摸点在Y轴上的绝对坐标
-         * @param degrees GhostView的绝对旋转角度 (0~360)
-         */
-        void onUpdate(float x, float y, float degrees);
     }
 }
