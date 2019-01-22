@@ -285,6 +285,10 @@ public class RandomDragLayout extends ViewGroup {
             mChild.setVisibility(INVISIBLE);
             initializeGhostView();
             mRootView.addView(mGhostView, LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT);
+
+            MarginLayoutParams layoutParams = (MarginLayoutParams) mChild.getLayoutParams();
+            event.offsetLocation(-layoutParams.leftMargin, -layoutParams.topMargin);
+
             mGhostView.onDown(event, mBitmap);
             isGhostViewShown = true;
             postRefreshTask();
@@ -416,6 +420,9 @@ public class RandomDragLayout extends ViewGroup {
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        if (mChild == null) {
+            throw new IllegalStateException("RandomDragLayout at least one child is needed!");
+        }
         measureChild(mChild, widthMeasureSpec, heightMeasureSpec);
         int widthSize = MeasureSpec.getSize(widthMeasureSpec);
         int widthMode = MeasureSpec.getMode(widthMeasureSpec);
