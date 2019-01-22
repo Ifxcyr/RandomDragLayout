@@ -22,7 +22,7 @@ implementation 'com.wuyr:randomdraglayout:1.1.1'
 |RectF getBounds()|获取映射后的Bitmap边界 (即：包括了旋转之后的宽高)|
 
 ## 使用示例:
-**在目标View外面直接套一层RandomDragLayout:**
+**在目标View外面直接套一层RandomDragLayout: (可以作用到任意View上)**
 
 ```
 <com.wuyr.randomdraglayout.RandomDragLayout
@@ -42,7 +42,8 @@ implementation 'com.wuyr:randomdraglayout:1.1.1'
 
 <br/>
 
-## Demo下载: 敬请期待。。。
-## Demo源码地址: 敬请期待。。。
-## 效果图:
-### 敬请期待。。。
+## Demo下载: [app-debug.apk](https://github.com/wuyr/RandomDragLayout/raw/master/app-debug.apk)
+## Demo源码地址: https://github.com/wuyr/RandomDragLayout
+## 效果图 (图1: QQ空间效果):
+![preview](https://github.com/wuyr/RandomDragLayout/raw/master/previews/preview.gif) ![preview](https://github.com/wuyr/RandomDragLayout/raw/master/previews/preview2.gif)
+![preview](https://github.com/wuyr/RandomDragLayout/raw/master/previews/preview3.gif) ![preview](https://github.com/wuyr/RandomDragLayout/raw/master/previews/preview4.gif)
