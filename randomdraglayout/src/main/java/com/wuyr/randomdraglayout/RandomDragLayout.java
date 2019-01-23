@@ -205,7 +205,7 @@ public class RandomDragLayout extends ViewGroup {
                     if (mGhostView != null) {
                         mCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
                         mChild.draw(mCanvas);
-                        mChild.invalidate();
+                        mGhostView.invalidate();
                         postRefreshTask();
                     }
                 }
