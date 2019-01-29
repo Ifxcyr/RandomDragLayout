@@ -1,5 +1,5 @@
 ## 任意拖布局 （扩展自QQ空间的列表Header效果）
-### 博客详情： 敬请期待。。。
+### 博客详情： https://blog.csdn.net/u011387817/article/details/84136291
 
 ### 使用方式:
 #### 添加依赖：
@@ -24,7 +24,7 @@ implementation 'com.wuyr:randomdraglayout:1.2.0'
 ## 使用示例:
 **在目标View外面直接套一层RandomDragLayout: (可以作用到任意View上)**
 
-```
+```xml
 <com.wuyr.randomdraglayout.RandomDragLayout
     android:layout_width="wrap_content"
     android:layout_height="wrap_content">
